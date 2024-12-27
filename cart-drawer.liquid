@@ -1,0 +1,190 @@
+{{ 'cart-drawer.css' | asset_url | stylesheet_tag }}
+<cart-drawer>
+    <div class="cart-drawer-header">
+        <div class="drawer-title">
+            Shopping Cart ({{ cart.item_count }})
+        </div>
+        <button class="drawer__close" data-js-close>
+            <span class="visually-hidden">Close sidebar</span>
+            <span aria-hidden="true" aria-role="img">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 1L1 17" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M1 1L17 17" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+        </button>
+    </div>
+    {%- if cart != empty -%}
+    <div class="free-shipping-status">
+        {% assign free_shipping_limit = section.settings.free_shipping | times: 100.00 %}
+        {% assign current_amount = cart.total_price %}
+        {% if current_amount >= free_shipping_limit %}
+            <span class="text">
+                You are eligible for free shipping!
+            </span>
+        {% else %}
+            <span class="text">
+                Your are {{ free_shipping_limit | minus: current_amount  | money }} away from free shipping.
+            </span>
+        {% endif %}
+    </div>
+    <form 
+        action="{{ routes.cart_url }}"
+        id="CartDrawer-Form"
+        method="post"
+    >
+        {% for item in cart.items %}
+            <cart-item>
+                <div class="top-area">
+                    <div class="image-wrapper">
+                        {{ item.image | img_url: '200x' | img_tag: item.title, 'line_image' }}
+                    </div>
+                    <div class="details">
+                        <a href="{{ item.url }}" class="cart-item__name h4 break eq-space">
+                            {{- item.product.title | escape -}}
+                        </a>
+                        {%- if item.original_price != item.final_price -%}
+                            <div class="cart-item__discounted-prices eq-space">
+                              <span class="visually-hidden">
+                                {{ 'products.product.price.regular_price' | t }}
+                              </span>
+                              <s class="cart-item__old-price product-option">
+                                {{- item.original_price | money -}}
+                              </s>
+                              <span class="visually-hidden">
+                                {{ 'products.product.price.sale_price' | t }}
+                              </span>
+                              <strong class="cart-item__final-price product-option">
+                                {{ item.final_price | money }}
+                              </strong>
+                            </div>
+                          {%- else -%}
+                            <div class="product-option eq-space">
+                              {{ item.original_price | money }}
+                            </div>
+                        {%- endif -%}
+
+                        <div class="varaint-name eq-space">
+                            {%- if item.product.has_only_default_variant == false -%}
+                                {%- for option in item.options_with_values -%}
+                                  <div class="product-option">
+                                    <dt>{{ option.name }}:</dt>
+                                    <dd>
+                                      {{ option.value -}}
+                                      {%- unless forloop.last %}, {% endunless %}
+                                    </dd>
+                                  </div>
+                                {%- endfor -%}
+                            {%- endif -%}
+                        </div>
+
+                        <ul
+                            class="discounts list-unstyled eq-space"
+                            role="list"
+                            aria-label="{{ 'customer.order.discount' | t }}"
+                          >
+                            {%- for discount in item.line_level_discount_allocations -%}
+                                <li class="discounts__discount">
+                                {{- 'icon-discount.svg' | inline_asset_content -}}
+                                {{ discount.discount_application.title }}
+                                </li>
+                            {%- endfor -%}
+                        </ul>
+                        <div class="cart-item__actions">
+                            <quantity-selector data-update-item data-key="{{ item.key }}" data-line="{{ item.index | plus: 1 }}" class="eq-space">
+                                <button type="button" data-minus name="minus">
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V7H0L1.19209e-07 5L12 5Z" fill="currentColor" style="stroke:none"></path></svg>
+                                </button>
+                                <input 
+                                    type="number" 
+                                    name="updates[]"
+                                    data-quantity-variant-id="{{ item.variant.id }}"
+                                    data-cart-quantity="{{ cart | item_count_for_variant: item.variant.id }}"
+                                    min="{{ item.variant.quantity_rule.min }}" 
+                                    value="{{ item.quantity }}" 
+                                    {% if item.variant.quantity_rule.max != null %}
+                                        max="{{ item.variant.quantity_rule.max }}"
+                                    {% endif %}
+                                    step="{{ item.variant.quantity_rule.increment }}"
+                                >
+                                <button type="button" data-plus name="plus">
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 0H7V12H5V0Z" fill="currentColor" style="stroke:none"></path><path d="M12 5V7H0L1.19209e-07 5L12 5Z" fill="currentColor" style="stroke:none"></path></svg>
+                                </button>
+                            </quantity-selector>
+                            <button
+                                  type="button"
+                                  class="button button--tertiary cart-remove-button"
+                                  aria-label="{{ 'sections.cart.remove_title' | t: title: item.title | escape }}"
+                                  data-variant-id="{{ item.variant.id }}"
+                                >
+                                  Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                
+            </cart-item>
+        {% endfor %}
+        <div class="order-instructions eq-space">
+            <label class="eq-space" for="cart-notes" >Order instructions:</label>
+            <textarea name="note" id="cart-notes" rows="5" >{{ cart.note }}</textarea>
+        </div>
+        <div class="cart-total-details">
+            <p class="total-label">
+                Total
+            </p>
+            <h3 class="cart-total">
+                {{ cart.total_price | money  }}
+            </h3>
+            <p class="shipping_text">Tax included and shipping calculated at checkout</p>
+        </div>
+    </form>
+    
+
+    <div class="cart-drawer-footer">
+        <a href="{{ routes.cart_url }}" class="btn">
+            View Cart
+        </a>
+        <button
+        type="submit"
+        id="CartDrawer-Checkout"
+        class="cart__checkout-button btn btn-primary"
+        name="checkout"
+        form="CartDrawer-Form"
+        {% if cart == empty %}
+          disabled
+        {% endif %}
+      >
+        {{ 'sections.cart.checkout' | t }}
+      </button>
+    </div>
+    
+    {%- else -%}
+        <div class="empty-state">
+            <p>Your cart is currently empty.</p>
+            <a href="/collections/all" class="btn btn-primary continue-browser">
+                Continue browsing
+            </a>
+        </div>
+    {%- endif -%}
+</cart-drawer>
+
+{% schema %}
+{
+    "name": "Cart Drawer",
+    "enabled_on": {
+        "groups": ["header"]
+    },
+    "settings": [
+        {
+            "type": "text",
+            "id": "free_shipping",
+            "label": "Free Shipping Minimum Abount",
+            "default": "250"
+        }
+    ],
+    "presets": [
+        {
+            "name":"Cart Drawer"
+        }
+    ]
+}
+{% endschema %}
